@@ -5,14 +5,20 @@ import re
 import sys
 import numpy as np
 from flair.data import Sentence
-from flair.embeddings import ELMoEmbeddings
+# ELMoEmbeddings
+from flair.embeddings import  TransformerWordEmbeddings, WordEmbeddings
 from keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
+import tensorflow_hub as hub 
+import tensorflow.compat.v1 as tf 
+tf.disable_eager_execution() 
+
 
 np.random.seed(1337)
 from keras import Model, Input, Sequential
-from keras.layers import Embedding, Conv1D, GlobalMaxPooling1D, Dense, Dropout, LSTM, merge, concatenate, Concatenate, \
+from keras.layers import Embedding, Conv1D, GlobalMaxPooling1D, Dense, Dropout, LSTM,  Concatenate, \
     Flatten
+# merge, concatenate,
 from sklearn.metrics import f1_score, mean_squared_error
 
 
@@ -44,7 +50,7 @@ def read_data_both(filename, max=None, mode='orig', train=True, pad=True):
             end = text.find("/>")
             orig = text[start:end + 2]
             edit = line[2]
-            if mode is 'edit':
+            if mode == 'edit':
                 text = text.replace(orig, edit)
             else:
                 while " " in orig:
@@ -65,7 +71,7 @@ def read_data_both(filename, max=None, mode='orig', train=True, pad=True):
             tuples.append(tup)
             edit = re.sub(regex, "", edit)
             text_list = re.split('\s+', text)
-            if mode is 'edit':
+            if mode == 'edit':
                 edit_index = text_list.index(edit)
             else:
                 edit_index = text_list.index(orig)
@@ -263,8 +269,27 @@ def train_model(x1, x2, y, dict_size, emb_matrix1, emb_matrix2):
     model.fit([x1, x2], y, validation_split=0.2, epochs=200, batch_size=16, callbacks=[early_stop])
     return model
 
-
 def train_model_elmo(x1, x2, y):
+    inputs1 = Input(shape=(x1.shape[1:]), dtype='float32')
+    drop1 = Dropout(0.5)(inputs1)  # prevent overfitting
+    lstm1 = LSTM(4, input_shape=(drop1.shape), return_sequences=True)(drop1)
+
+    inputs2 = Input(shape=(x2.shape[1:]), dtype='float32')
+    drop2 = Dropout(0.5)(inputs2)  # prevent overfitting
+    lstm2 = LSTM(4, input_shape=(drop2.shape), return_sequences=True)(drop2)
+
+    merged = Concatenate()([lstm1, lstm2])
+    merged = Dense(16)(merged)
+    flat = Flatten()(merged)
+    out = Dense(1, activation='linear')(flat)
+    model = Model(inputs=[inputs1, inputs2], outputs=out)  # Fix: inputs instead of input
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    early_stop = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+    model.fit([x1, x2], y, validation_split=0.2, epochs=100, batch_size=16, callbacks=[early_stop])
+    return model
+
+
+def train_model_elmo_a(x1, x2, y):
     inputs1 = Input(shape=(x1.shape[1:]), dtype='float32')
     drop = Dropout(0.5)(inputs1)  # prevent overfitting
     lstm1 = LSTM(4, input_shape=(drop.shape), return_sequences=True)(drop)
@@ -278,7 +303,7 @@ def train_model_elmo(x1, x2, y):
     merged = Dense(16)(merged)
     flat = Flatten()(merged)
     out = Dense(1, activation='linear')(flat)
-    model = Model(input=[inputs1, inputs2], output=out)
+    model = Model(inputs=[inputs1, inputs2], outputs=out)
     model.compile(optimizer='adam', loss='mean_squared_error')
     early_stop = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True) # prevent overfitting
     model.fit([x1, x2], y, validation_split=0.2, epochs=100, batch_size=16, callbacks=[early_stop])
@@ -291,14 +316,48 @@ def print_to_file(ids, predictions):
         writer.writerow(["id", "pred"])
         for index in range(len(ids)):
             writer.writerow([ids[index], predictions[index]])
-
-
 def elmo_embeddings(sentences):
+    print("hi")
     embedded_sentences = []
-    elmo = ELMoEmbeddings('small')
+    max_seq_length = 0
+
+    # Using WordEmbeddings instead of tf.Module (assuming you have Flair installed)
+    elmo = WordEmbeddings("glove")
+
     for i in range(len(sentences)):
         sent = Sentence(sentences[i])
-        print("sentence: ", sent)
+        #print("sentence: ", sent)
+        elmo.embed(sent)
+        embedding = []
+        
+        for token in sent.tokens:
+            emb = token.embedding.numpy()
+            embedding.append(emb)
+
+        if len(embedding) > max_seq_length:
+            max_seq_length = len(embedding)
+
+        embedded_sentences.append(embedding)
+
+    # Pad sequences to have a uniform length
+    for i in range(len(embedded_sentences)):
+        while len(embedded_sentences[i]) < 29:
+            embedded_sentences[i].append(np.zeros_like(embedding[0]))
+
+    embedded_sentences = np.array(embedded_sentences)
+    print("elmo embeddings done")
+    return embedded_sentences
+
+def elmo_embeddings_a(sentences):
+    print("hi")
+    embedded_sentences = []
+    print("hi")
+    #elmo = tf.compat.v1.Module("https://tfhub.dev/google/elmo/3")
+    elmo =  WordEmbeddings("glove")
+    print("elmo")
+    for i in range(len(sentences)):
+        sent = Sentence(sentences[i])
+        #print("sentence: ", sent)
         elmo.embed(sent)
         embedding = []
         for token in sent.tokens:
@@ -333,14 +392,19 @@ if __name__ == "__main__":
     #main method that calls all methods
     text_edits, labels_edits, indices_edits, ids_edits, tuples_edits = read_data_both('data/task-1/train.csv', mode='edit')
     sent = text_edits[0].split()
-    print(len(sent))
+    print(len(sent),"here")
     text, labels, indices, ids, tuples = read_data_both('data/task-1/train.csv', max=len(sent)-1)
-
+    print("a")
     x_orig = elmo_embeddings(text)
+    print("text",len(text))
     x_edit = elmo_embeddings(text_edits)
+    print("text_edit",len(text_edits))
     print("original elmo shape: ", x_orig.shape)
     print("edited elmo shape: ", x_edit.shape)
+    print(labels.shape)
     model = train_model_elmo(x_orig, x_edit, labels)
+    
+
 
     # test_text, test_labs, test_inds, test_ids, test_tuples = read_data_both('data/task-1/test_split.csv', max=len(sent)-1)
     # test_text_edits, test_labs_edits, test_inds_edits, test_ids_edits, test_tuples_edits = read_data_both('data/task-1/test_split.csv', max=len(sent)-1, mode='edit')
@@ -352,11 +416,16 @@ if __name__ == "__main__":
     # rmse = math.sqrt(mean_squared_error(y_true=test_labs, y_pred=y_pred))
     # print(rmse)
 
-    dev_text, dev_inds, dev_ids, dev_tuples = read_data_both('data/semeval-2020-task-7-data-full/task-1/test.csv', max=len(sent) - 1, train=False)
-    dev_text_edits, dev_inds_edits, dev_ids_edits, dev_tuples_edits = read_data_both('data/semeval-2020-task-7-data-full/task-1/test.csv', max=len(sent) - 1, mode='edit', train=False)
+    dev_text, dev_inds, dev_ids, dev_tuples = read_data_both('data/task-1/dev.csv', max=len(sent) - 1, train=False)
+    dev_text_edits, dev_inds_edits, dev_ids_edits, dev_tuples_edits = read_data_both('data/task-1/dev.csv', max=len(sent) - 1, mode='edit', train=False)
 
     x_dev_orig = elmo_embeddings(dev_text)
+    
     x_dev_edit = elmo_embeddings(dev_text_edits)
+    print(len(dev_text))
+    print(len(dev_text_edits))
+    print(x_dev_orig.shape)
+    print(x_dev_edit.shape)
 
     dev_pred = model.predict([x_dev_orig, x_dev_edit])
     dev_pred = scale_predictions(dev_pred)

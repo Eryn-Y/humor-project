@@ -56,7 +56,7 @@ def read_data_task1(filename, max=None, mode='orig', train=True, pad=True):
             end = text.find("/>")
             orig = text[start:end + 2]
             edit = line[2]
-            if mode is 'edit':
+            if mode == 'edit':
                 text = text.replace(orig, edit)
             else:
                 while " " in orig:
@@ -77,7 +77,7 @@ def read_data_task1(filename, max=None, mode='orig', train=True, pad=True):
             tuples.append(tup)
             edit = re.sub(regex, "", edit)
             text_list = re.split('\s+', text)
-            if mode is 'edit':
+            if mode == 'edit':
                 edit_index = text_list.index(edit)
             else:
                 edit_index = text_list.index(orig)
@@ -145,7 +145,7 @@ def read_data_task2(filename, max=None, mode='orig', train=True, pad=True):
             end1 = text1.find("/>")
             orig1 = text1[start1:end1 + 2]
             edit1 = line[2]
-            if mode is 'edit':
+            if mode == 'edit':
                 text1 = text1.replace(orig1, edit1)
             else:
                 while " " in orig1:
@@ -166,7 +166,7 @@ def read_data_task2(filename, max=None, mode='orig', train=True, pad=True):
             tuples1.append(tup1)
             edit1 = re.sub(regex, "", edit1)
             text_list1 = re.split('\s+', text1)
-            if mode is 'edit':
+            if mode == 'edit':
                 edit_index1 = text_list1.index(edit1)
             else:
                 edit_index1 = text_list1.index(orig1)
@@ -184,7 +184,7 @@ def read_data_task2(filename, max=None, mode='orig', train=True, pad=True):
             start2 = text2.find("<")
             end2 = text2.find("/>")
             orig2 = text2[start2:end2 + 2]
-            if mode is 'edit':
+            if mode == 'edit':
                 text2 = text2.replace(orig2, edit2)
             else:
                 while " " in orig2:
@@ -205,7 +205,7 @@ def read_data_task2(filename, max=None, mode='orig', train=True, pad=True):
             tuples2.append(tup2)
             edit2 = re.sub(regex, "", edit2)
             text_list2 = re.split('\s+', text2)
-            if mode is 'edit':
+            if mode == 'edit':
                 edit_index2 = text_list2.index(edit2)
             else:
                 edit_index2 = text_list2.index(orig2)
@@ -469,17 +469,17 @@ if __name__ == '__main__':
     # TASK 2
     #  training set original sentences
     ids, texts1, texts2, means1, means2, tuples1, tuples2, indices1, indices2, labels = \
-        read_data_task2('data/semeval-2020-task-7-data-full/task-2/train.csv', mode='orig', pad=False)
+        read_data_task2('data/task-2/train.csv', mode='orig', pad=False)
     # edited sentences
     ed_ids, ed_t1, ed_t2, ed_m1, ed_m2, ed_tup1, ed_tup2, ed_idx1, ed_idx2, ed_labels = \
-        read_data_task2('data/semeval-2020-task-7-data-full/task-2/train.csv', mode='edit', pad=False)
+        read_data_task2('data/task-2/train.csv', mode='edit', pad=False)
     # dev set
     # original sentences
     d_ids, d_texts1, d_texts2, d_means1, d_means2, d_tuples1, d_tuples2, d_indices1, d_indices2, d_labels = \
-        read_data_task2('data/semeval-2020-task-7-data-full/task-2/dev.csv', mode='orig', pad=False)
+        read_data_task2('data/task-2/dev.csv', mode='orig', pad=False)
     # edited sentences
     ded_ids, ded_t1, ded_t2, ded_m1, ded_m2, ded_tup1, ded_tup2, ded_idx1, ded_idx2, ded_labels = \
-        read_data_task2('data/semeval-2020-task-7-data-full/task-2/dev.csv', mode='edit', pad=False)
+        read_data_task2('data/task-2/dev.csv', mode='edit', pad=False)
     enc = Encoder()
     all_origs = np.append(texts1, texts2, axis=0)
     #all_origs = np.append(all_origs, featurs, axis=0)
@@ -556,16 +556,16 @@ if __name__ == '__main__':
     print_to_file(test_ids, predictions, filename='task-2-output.csv') #TEST SET
     # #print(rmse)
     # TASK 1
-    features, labels, idx, ids, tups = read_data_task1('data/semeval-2020-task-7-data-full/task-1/train.csv', mode='orig', pad=False)
-    ed_features, ed_labels, ed_idx, ed_ids, ed_tups = read_data_task1('data/semeval-2020-task-7-data-full/task-1/train.csv', mode='edit', pad=False)
+    features, labels, idx, ids, tups = read_data_task1('data/task-1/train.csv', mode='orig', pad=False)
+    ed_features, ed_labels, ed_idx, ed_ids, ed_tups = read_data_task1('data/task-1/train.csv', mode='edit', pad=False)
 
-    f_dev, lab_dev, ind_dev, id_dev, t_dev = read_data_task1('data/semeval-2020-task-7-data-full/task-1/dev.csv',
+    f_dev, lab_dev, ind_dev, id_dev, t_dev = read_data_task1('data/task-1/dev.csv',
                                                     mode='orig', pad=False)
-    ed_fdev, ed_labdev, ed_inddev, ed_iddev, ed_tdev = read_data_task1('data/semeval-2020-task-7-data-full/task-1/dev.csv',
+    ed_fdev, ed_labdev, ed_inddev, ed_iddev, ed_tdev = read_data_task1('data/task-1/dev.csv',
                                                             mode='edit', pad=False)
-    f_test, ind_test, id_test, t_test = read_data_task1('data/semeval-2020-task-7-data-full/task-1/test.csv', train=False,
+    f_test, ind_test, id_test, t_test = read_data_task1('data/task-1/test.csv', train=False,
                                                     mode='orig', pad=False)
-    ed_ftest, ed_indtest, ed_idtest, ed_ttest = read_data_task1('data/semeval-2020-task-7-data-full/task-1/test.csv', train=False,
+    ed_ftest, ed_indtest, ed_idtest, ed_ttest = read_data_task1('data/task-1/test.csv', train=False,
                                                             mode='edit', pad=False)
     # training features
     enc = Encoder()
